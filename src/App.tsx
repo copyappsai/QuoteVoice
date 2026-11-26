@@ -4,13 +4,21 @@ import { IPhoneFrame } from './components/IPhoneFrame';
 import { HomeScreen } from './components/HomeScreen';
 import { RecordingScreen } from './components/RecordingScreen';
 import { QuoteReadyScreen } from './components/QuoteReadyScreen';
+import { ClientsScreen } from './components/ClientsScreen';
+import { SettingsModal } from './components/SettingsModal';
 import { PromoControls } from './components/PromoControls';
+import { Quote, ContractorProfile } from './types';
+import { storage } from './services/storage';
 import { sounds } from './utils/audio';
 
-export type ScreenState = 'home' | 'recording' | 'processing' | 'ready';
+export type ScreenState = 'home' | 'recording' | 'processing' | 'ready' | 'clients';
 
 export function App() {
   const [activeScreen, setActiveScreen] = useState<ScreenState>('home');
+  const [activeQuote, setActiveQuote] = useState<Quote>(storage.getQuotes()[0]);
+  const [showSettings, setShowSettings] = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState<string | undefined>(undefined);
+  
   const [isAutoPlaying, setIsAutoPlaying] = useState(false);
   const [autoPlayProgress, setAutoPlayProgress] = useState(0);
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -19,15 +27,6 @@ export function App() {
   const isCleanRecording = typeof window !== 'undefined' && (
     window.location.search.includes('clean=true') || window.location.hash.includes('clean')
   );
-
-  useEffect(() => {
-    if (isCleanRecording) {
-      const timer = setTimeout(() => {
-        handleAutoPlay();
-      }, 600);
-      return () => clearTimeout(timer);
-    }
-  }, [isCleanRecording]);
 
   const autoPlayTimers = useRef<any[]>([]);
   const autoPlayInterval = useRef<any>(null);
@@ -66,10 +65,9 @@ export function App() {
     setAutoPlayProgress(0);
     setActiveScreen('home');
 
-    const totalDuration = 14500; // 14.5 seconds
+    const totalDuration = 14500;
     const startTime = Date.now();
 
-    // Progress counter for UI
     autoPlayInterval.current = setInterval(() => {
       const elapsed = Date.now() - startTime;
       const pct = Math.min(100, (elapsed / totalDuration) * 100);
@@ -83,25 +81,20 @@ export function App() {
     }, 50);
 
     // Timeline actions
-    // T + 1.2s: Mike presses Mic button
     const t1 = setTimeout(() => {
       sounds.playMicStart();
       setActiveScreen('recording');
     }, 1200);
 
-    // T + 3.3s: Recording finishes (2s audio) -> AI Processing starts (1.2s)
     const t2 = setTimeout(() => {
       setActiveScreen('processing');
     }, 3300);
 
-    // T + 4.7s: AI Processing completes -> Quote Ready Screen appears
     const t3 = setTimeout(() => {
       setActiveScreen('ready');
     }, 4700);
 
-    // T + 7.5s: Auto trigger Send via Text / WhatsApp
     const t4 = setTimeout(() => {
-      // Find and click the send button or trigger event
       const sendBtn = document.querySelector('button[class*="bg-emerald-500"]') as HTMLButtonElement | null;
       if (sendBtn) {
         sendBtn.click();
@@ -110,6 +103,15 @@ export function App() {
 
     autoPlayTimers.current = [t1, t2, t3, t4];
   };
+
+  useEffect(() => {
+    if (isCleanRecording) {
+      const timer = setTimeout(() => {
+        handleAutoPlay();
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [isCleanRecording]);
 
   // Keyboard navigation shortcuts
   useEffect(() => {
@@ -147,11 +149,10 @@ export function App() {
   return (
     <div className="min-h-screen bg-[#0a0d14] text-slate-100 flex flex-col justify-between py-3 px-4 relative overflow-x-hidden selection:bg-blue-600 selection:text-white">
       
-      {/* Background ambient lighting for screen recording studio look */}
+      {/* Background ambient lighting */}
       <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-600/10 rounded-full blur-[140px]" />
         <div className="absolute bottom-1/4 left-1/2 -translate-x-1/2 w-[500px] h-[400px] bg-indigo-600/10 rounded-full blur-[120px]" />
-        {/* Subtle grid pattern */}
         <div 
           className="absolute inset-0 opacity-[0.03]"
           style={{
@@ -164,7 +165,7 @@ export function App() {
       {/* Top Floating Promo Controls */}
       {!isCleanRecording && (
         <PromoControls
-          currentScreen={activeScreen}
+          currentScreen={activeScreen === 'clients' ? 'home' : activeScreen}
           onSelectScreen={(s) => {
             clearAutoPlay();
             sounds.playTap();
@@ -181,14 +182,25 @@ export function App() {
 
       {/* Center Stage: iPhone 16 Pro Frame */}
       <main className="flex-1 flex items-center justify-center my-auto">
-        <IPhoneFrame activeScreen={activeScreen} isAutoPlaying={isAutoPlaying}>
+        <IPhoneFrame activeScreen={activeScreen === 'clients' ? 'home' : activeScreen} isAutoPlaying={isAutoPlaying}>
           <AnimatePresence mode="wait">
             {activeScreen === 'home' && (
               <HomeScreen
                 key="home-screen"
-                onStartRecord={() => {
+                onStartRecord={(customTranscript) => {
                   clearAutoPlay();
+                  setVoiceTranscript(customTranscript);
                   setActiveScreen('recording');
+                }}
+                onOpenQuote={(quote) => {
+                  setActiveQuote(quote);
+                  setActiveScreen('ready');
+                }}
+                onOpenClients={() => {
+                  setActiveScreen('clients');
+                }}
+                onOpenSettings={() => {
+                  setShowSettings(true);
                 }}
               />
             )}
@@ -196,7 +208,9 @@ export function App() {
             {(activeScreen === 'recording' || activeScreen === 'processing') && (
               <RecordingScreen
                 key="recording-screen"
-                onComplete={() => {
+                initialTranscript={voiceTranscript}
+                onComplete={(newQuote) => {
+                  setActiveQuote(newQuote);
                   setActiveScreen('ready');
                 }}
                 onCancel={() => {
@@ -210,6 +224,7 @@ export function App() {
             {activeScreen === 'ready' && (
               <QuoteReadyScreen
                 key="ready-screen"
+                quote={activeQuote}
                 onBack={() => {
                   clearAutoPlay();
                   sounds.playTap();
@@ -218,13 +233,42 @@ export function App() {
                 onReset={() => {
                   clearAutoPlay();
                   sounds.playTap();
+                  setVoiceTranscript(undefined);
+                  setActiveScreen('recording');
+                }}
+                onQuoteUpdated={(updated) => {
+                  setActiveQuote(updated);
+                }}
+              />
+            )}
+
+            {activeScreen === 'clients' && (
+              <ClientsScreen
+                key="clients-screen"
+                onBack={() => {
+                  sounds.playTap();
                   setActiveScreen('home');
+                }}
+                onSelectClient={(clientName) => {
+                  sounds.playMicStart();
+                  setVoiceTranscript(`Quote for ${clientName}, 4 hours labor at 120 an hour, plus 250 for parts, add 10 percent tax.`);
+                  setActiveScreen('recording');
                 }}
               />
             )}
           </AnimatePresence>
         </IPhoneFrame>
       </main>
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <SettingsModal
+          onClose={() => setShowSettings(false)}
+          onSaved={(newProfile) => {
+            // refresh
+          }}
+        />
+      )}
 
       {/* Bottom Subtitle / Recording Guide */}
       {!isCleanRecording && (

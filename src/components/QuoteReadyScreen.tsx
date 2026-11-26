@@ -6,48 +6,41 @@ import {
   CheckCircle2, 
   MessageSquare, 
   Check, 
-  Sparkles,
-  Phone,
-  ShieldCheck,
-  RotateCcw
+  Sparkles, 
+  Phone, 
+  ShieldCheck, 
+  RotateCcw,
+  Edit3,
+  Trash2,
+  Share2
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { Quote } from '../types';
+import { storage } from '../services/storage';
+import { generateQuotePDF } from '../utils/pdfGenerator';
+import { QuoteEditorModal } from './QuoteEditorModal';
 import { sounds } from '../utils/audio';
-import { generateQuotePDF, QuoteData } from '../utils/pdfGenerator';
 
 interface QuoteReadyScreenProps {
+  quote?: Quote;
   onBack: () => void;
   onReset: () => void;
+  onQuoteUpdated?: (updated: Quote) => void;
 }
 
-export const QuoteReadyScreen: React.FC<QuoteReadyScreenProps> = ({ onBack, onReset }) => {
+export const QuoteReadyScreen: React.FC<QuoteReadyScreenProps> = ({ 
+  quote: initialQuote,
+  onBack, 
+  onReset,
+  onQuoteUpdated
+}) => {
+  const profile = storage.getProfile();
+  const [quote, setQuote] = useState<Quote>(initialQuote || storage.getQuotes()[0]);
   const [showToast, setShowToast] = useState(false);
-  const [isSent, setIsSent] = useState(false);
+  const [toastMessage, setToastMessage] = useState('Quote sent to client!');
+  const [isSent, setIsSent] = useState(quote.status === 'sent' || quote.status === 'paid');
+  const [isEditing, setIsEditing] = useState(false);
   const [pdfGenerating, setPdfGenerating] = useState(false);
-
-  const quoteData: QuoteData = {
-    quoteNumber: 'QV-1089',
-    date: 'Nov 26, 2026',
-    contractorName: "Mike's Electrical & HVAC",
-    contractorPhone: '+1 (555) 019-2834',
-    clientName: 'John Miller',
-    clientAddress: '742 Evergreen Terrace, Springfield',
-    items: [
-      {
-        description: 'Labor (4 hrs @ $120/hr)',
-        details: 'Licensed journeyman diagnostics & installation',
-        amount: 480.00,
-      },
-      {
-        description: 'Materials (Copper piping & valves)',
-        details: 'Grade-L 3/4" copper pipe, brass ball valves',
-        amount: 350.00,
-      },
-    ],
-    taxRate: 0.10,
-    taxAmount: 83.00,
-    total: 913.00,
-  };
 
   const triggerConfetti = () => {
     try {
@@ -58,15 +51,31 @@ export const QuoteReadyScreen: React.FC<QuoteReadyScreenProps> = ({ onBack, onRe
         colors: ['#10b981', '#3b82f6', '#6366f1', '#f59e0b'],
       });
     } catch {
-      // Ignore if canvas-confetti is not loaded
+      // ignore
     }
   };
 
   const handleSend = () => {
     sounds.playSuccessDing();
     setIsSent(true);
+    setToastMessage(`Quote sent to ${quote.clientName}!`);
     setShowToast(true);
     triggerConfetti();
+
+    // Update status in storage
+    const updated = storage.updateQuoteStatus(quote.id, 'sent');
+    if (updated) {
+      setQuote({ ...updated });
+      onQuoteUpdated?.(updated);
+    }
+
+    // Pre-filled WhatsApp / SMS message text
+    const messageText = `Hi ${quote.clientName}, here is your official estimate from ${profile.businessName} for ${quote.jobTitle}. Total: $${quote.total.toFixed(2)}. View PDF or reply to approve!`;
+    const cleanPhone = quote.clientPhone.replace(/[^0-9]/g, '');
+    
+    // Open WhatsApp link in new tab if user clicks
+    const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(messageText)}`;
+    window.open(waUrl, '_blank', 'noopener,noreferrer');
 
     setTimeout(() => {
       setShowToast(false);
@@ -77,9 +86,30 @@ export const QuoteReadyScreen: React.FC<QuoteReadyScreenProps> = ({ onBack, onRe
     sounds.playTap();
     setPdfGenerating(true);
     setTimeout(() => {
-      generateQuotePDF(quoteData);
+      generateQuotePDF(quote, profile);
       setPdfGenerating(false);
-    }, 200);
+    }, 180);
+  };
+
+  const handleTogglePaid = () => {
+    sounds.playTap();
+    const newStatus = quote.status === 'paid' ? 'sent' : 'paid';
+    const updated = storage.updateQuoteStatus(quote.id, newStatus);
+    if (updated) {
+      setQuote({ ...updated });
+      onQuoteUpdated?.(updated);
+      if (newStatus === 'paid') {
+        sounds.playSuccessDing();
+        triggerConfetti();
+      }
+    }
+  };
+
+  const handleSaveEdit = (updatedQuote: Quote) => {
+    storage.saveQuote(updatedQuote);
+    setQuote(updatedQuote);
+    setIsEditing(false);
+    onQuoteUpdated?.(updatedQuote);
   };
 
   return (
@@ -99,19 +129,31 @@ export const QuoteReadyScreen: React.FC<QuoteReadyScreenProps> = ({ onBack, onRe
         </button>
 
         <div className="flex items-center gap-1.5 bg-white px-2 py-0.5 rounded-full border border-slate-200 shadow-2xs">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+          <span className={`w-1.5 h-1.5 rounded-full ${quote.status === 'paid' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
           <span className="text-[10.5px] font-bold text-slate-800 font-mono tracking-tight">
-            Quote #QV-1089
+            Quote #{quote.quoteNumber}
           </span>
         </div>
 
-        <button
-          onClick={onReset}
-          className="w-6 h-6 rounded-full bg-slate-200/80 hover:bg-slate-300 flex items-center justify-center text-slate-700 active:scale-95"
-          title="New Quote"
-        >
-          <RotateCcw className="w-3 h-3" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => {
+              sounds.playTap();
+              setIsEditing(true);
+            }}
+            className="w-6 h-6 rounded-full bg-slate-200/80 hover:bg-slate-300 flex items-center justify-center text-slate-700 active:scale-95"
+            title="Edit Quote"
+          >
+            <Edit3 className="w-3 h-3" />
+          </button>
+          <button
+            onClick={onReset}
+            className="w-6 h-6 rounded-full bg-slate-200/80 hover:bg-slate-300 flex items-center justify-center text-slate-700 active:scale-95"
+            title="New Voice Quote"
+          >
+            <RotateCcw className="w-3 h-3" />
+          </button>
+        </div>
       </div>
 
       {/* Crisp Professional Invoice / Quote Preview Card */}
@@ -128,19 +170,23 @@ export const QuoteReadyScreen: React.FC<QuoteReadyScreenProps> = ({ onBack, onRe
             </div>
             <div>
               <h2 className="text-[11px] font-bold text-slate-900 leading-tight">
-                Mike's Electrical & HVAC
+                {profile.businessName}
               </h2>
               <p className="text-[9px] text-slate-500 flex items-center gap-1">
-                <ShieldCheck className="w-2.5 h-2.5 text-emerald-600" /> Lic. #EC-9821
+                <ShieldCheck className="w-2.5 h-2.5 text-emerald-600" /> Lic. #{profile.licenseNumber}
               </p>
             </div>
           </div>
 
           <div className="text-right">
-            <span className="inline-block text-[9px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 px-1.5 py-0.2 rounded border border-blue-200">
-              Official Estimate
+            <span className={`inline-block text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded border capitalize ${
+              quote.status === 'paid' 
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                : 'bg-blue-50 text-blue-700 border-blue-200'
+            }`}>
+              {quote.status === 'paid' ? 'Paid in Full' : 'Official Estimate'}
             </span>
-            <p className="text-[9px] text-slate-400 mt-0.5 font-mono">Nov 26, 2026</p>
+            <p className="text-[9px] text-slate-400 mt-0.5 font-mono">{quote.date}</p>
           </div>
         </div>
 
@@ -151,15 +197,19 @@ export const QuoteReadyScreen: React.FC<QuoteReadyScreenProps> = ({ onBack, onRe
               Prepared For
             </p>
             <h3 className="text-xs font-extrabold text-slate-900">
-              John Miller
+              {quote.clientName}
             </h3>
             <p className="text-[9.5px] text-slate-500 truncate max-w-[190px]">
-              742 Evergreen Terrace, Springfield
+              {quote.clientAddress || '742 Evergreen Terrace, Springfield'}
             </p>
           </div>
-          <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-700">
+          <a 
+            href={`tel:${quote.clientPhone}`}
+            className="w-6 h-6 rounded-full bg-blue-100 hover:bg-blue-200 flex items-center justify-center text-blue-700"
+            title="Call Client"
+          >
             <Phone className="w-3 h-3" />
-          </div>
+          </a>
         </div>
 
         {/* Itemized Rows */}
@@ -169,28 +219,23 @@ export const QuoteReadyScreen: React.FC<QuoteReadyScreenProps> = ({ onBack, onRe
             <span>Amount</span>
           </div>
 
-          {/* Row 1: Labor */}
-          <div className="flex items-start justify-between py-0.5 text-[11px] border-b border-slate-100">
-            <div>
-              <p className="font-bold text-slate-900">Labor (4 hrs @ $120/hr)</p>
-              <p className="text-[9px] text-slate-500">Diagnostics & copper piping installation</p>
+          {/* Dynamic Rows */}
+          {quote.items.map((item) => (
+            <div key={item.id} className="flex items-start justify-between py-0.5 text-[11px] border-b border-slate-100">
+              <div>
+                <p className="font-bold text-slate-900">{item.description}</p>
+                {item.details && <p className="text-[9px] text-slate-500">{item.details}</p>}
+              </div>
+              <span className="font-bold text-slate-900 font-mono text-[11px]">
+                ${item.total.toFixed(2)}
+              </span>
             </div>
-            <span className="font-bold text-slate-900 font-mono text-[11px]">$480.00</span>
-          </div>
+          ))}
 
-          {/* Row 2: Materials */}
-          <div className="flex items-start justify-between py-0.5 text-[11px] border-b border-slate-100">
-            <div>
-              <p className="font-bold text-slate-900">Materials (Copper piping & valves)</p>
-              <p className="text-[9px] text-slate-500">Grade-L 3/4" pipe, brass ball valves</p>
-            </div>
-            <span className="font-bold text-slate-900 font-mono text-[11px]">$350.00</span>
-          </div>
-
-          {/* Row 3: Tax */}
+          {/* Tax */}
           <div className="flex items-center justify-between py-0.5 text-[10.5px] text-slate-600">
-            <span className="font-medium">Tax (10%)</span>
-            <span className="font-mono text-[10.5px]">$83.00</span>
+            <span className="font-medium">Tax ({(quote.taxRate * 100).toFixed(0)}%)</span>
+            <span className="font-mono text-[10.5px]">${quote.taxAmount.toFixed(2)}</span>
           </div>
 
           {/* Total Highlight Box */}
@@ -203,22 +248,29 @@ export const QuoteReadyScreen: React.FC<QuoteReadyScreenProps> = ({ onBack, onRe
             </div>
             <div className="text-right">
               <span className="text-lg font-extrabold text-emerald-800 tracking-tight font-mono">
-                $913.00
+                ${quote.total.toFixed(2)}
               </span>
             </div>
           </div>
         </div>
 
-        {/* AI Stamp */}
+        {/* AI Stamp & Quick Payment Toggle */}
         <div className="flex items-center justify-between pt-0.5 text-[9px] text-slate-400">
           <span className="flex items-center gap-1 text-blue-600 font-medium">
             <Sparkles className="w-2.5 h-2.5" /> Voice-Parsed & Tax-Calculated
           </span>
-          <span className="font-medium text-slate-500">Instant PDF Ready</span>
+          <button
+            onClick={handleTogglePaid}
+            className={`font-bold hover:underline cursor-pointer ${
+              quote.status === 'paid' ? 'text-emerald-700' : 'text-slate-500'
+            }`}
+          >
+            {quote.status === 'paid' ? '✓ Marked Paid' : '○ Mark as Paid'}
+          </button>
         </div>
       </div>
 
-      {/* Prominent Action Buttons - Properly Spaced Above Home Bar */}
+      {/* Prominent Action Buttons */}
       <div className="pt-2 space-y-1.5 shrink-0">
         {/* Button 1: Send via Text / WhatsApp */}
         <motion.button
@@ -257,7 +309,7 @@ export const QuoteReadyScreen: React.FC<QuoteReadyScreenProps> = ({ onBack, onRe
         </motion.button>
       </div>
 
-      {/* Native iOS Floating Notification Toast */}
+      {/* Floating Notification Toast */}
       <AnimatePresence>
         {showToast && (
           <motion.div
@@ -272,7 +324,7 @@ export const QuoteReadyScreen: React.FC<QuoteReadyScreenProps> = ({ onBack, onRe
             </div>
             <div className="flex-1">
               <h4 className="text-[11px] font-bold text-white flex items-center gap-1">
-                Quote sent to John Miller!
+                {toastMessage}
               </h4>
               <p className="text-[9.5px] text-emerald-400 font-medium">
                 Sent via SMS & WhatsApp • PDF Attached
@@ -281,6 +333,15 @@ export const QuoteReadyScreen: React.FC<QuoteReadyScreenProps> = ({ onBack, onRe
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Quote Editor Modal */}
+      {isEditing && (
+        <QuoteEditorModal
+          quote={quote}
+          onSave={handleSaveEdit}
+          onClose={() => setIsEditing(false)}
+        />
+      )}
     </motion.div>
   );
 };

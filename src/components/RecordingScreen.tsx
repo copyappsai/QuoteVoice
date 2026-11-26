@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Sparkles, 
@@ -8,25 +8,67 @@ import {
   Percent, 
   CheckCircle2, 
   X,
-  Volume2
+  Volume2,
+  Mic,
+  ChevronDown
 } from 'lucide-react';
+import { Quote } from '../types';
+import { parseTradeQuoteVoice, speechService } from '../services/voiceNlp';
+import { storage, VOICE_PRESETS } from '../services/storage';
 import { sounds } from '../utils/audio';
 
 interface RecordingScreenProps {
-  onComplete: () => void;
+  onComplete: (quote: Quote) => void;
   onCancel: () => void;
+  initialTranscript?: string;
 }
 
-const FULL_TRANSCRIPT = "Quote for John Miller, 4 hours labor at 120 an hour, plus 350 for copper piping and valves, add 10 percent tax.";
-
-export const RecordingScreen: React.FC<RecordingScreenProps> = ({ onComplete, onCancel }) => {
+export const RecordingScreen: React.FC<RecordingScreenProps> = ({ 
+  onComplete, 
+  onCancel,
+  initialTranscript
+}) => {
   const [phase, setPhase] = useState<'recording' | 'processing'>('recording');
   const [displayedWords, setDisplayedWords] = useState<string[]>([]);
   const [progress, setProgress] = useState(0);
+  const [selectedPresetIndex, setSelectedPresetIndex] = useState(0);
+  const [isUsingLiveMic, setIsUsingLiveMic] = useState(false);
 
-  const words = FULL_TRANSCRIPT.split(' ');
+  const activePreset = VOICE_PRESETS[selectedPresetIndex];
+  const transcriptToUse = initialTranscript || activePreset.transcript;
+  const words = transcriptToUse.split(' ');
 
-  // Word-by-word transcription timer during 2-second recording
+  const createdQuoteRef = useRef<Quote | null>(null);
+
+  // Parse Quote when switching to processing
+  useEffect(() => {
+    const profile = storage.getProfile();
+    const parsed = parseTradeQuoteVoice(transcriptToUse, profile.defaultTaxRate);
+
+    const newQuote: Quote = {
+      id: `qv-${Date.now()}`,
+      quoteNumber: `QV-${Math.floor(1000 + Math.random() * 9000)}`,
+      createdAt: new Date().toISOString(),
+      date: 'Nov 26, 2026',
+      dueDate: 'Dec 26, 2026',
+      status: 'draft',
+      clientName: parsed.clientName,
+      clientPhone: '+1 (555) 234-5678',
+      clientAddress: '742 Evergreen Terrace, Springfield',
+      jobTitle: parsed.jobTitle,
+      tradeType: parsed.tradeType,
+      items: parsed.items,
+      subtotal: parsed.subtotal,
+      taxRate: parsed.taxRate,
+      taxAmount: parsed.taxAmount,
+      total: parsed.total,
+      paymentTerms: profile.defaultPaymentTerms,
+    };
+
+    createdQuoteRef.current = newQuote;
+  }, [transcriptToUse]);
+
+  // Word-by-word streaming effect during 2-second recording
   useEffect(() => {
     let wordIndex = 0;
     const intervalTime = 1900 / words.length;
@@ -53,7 +95,7 @@ export const RecordingScreen: React.FC<RecordingScreenProps> = ({ onComplete, on
       clearInterval(wordTimer);
       clearTimeout(switchTimer);
     };
-  }, []);
+  }, [transcriptToUse]);
 
   // Snappy 1.2-second AI Extraction animation
   useEffect(() => {
@@ -70,7 +112,10 @@ export const RecordingScreen: React.FC<RecordingScreenProps> = ({ onComplete, on
       if (elapsed >= duration) {
         clearInterval(progressTimer);
         setTimeout(() => {
-          onComplete();
+          if (createdQuoteRef.current) {
+            storage.saveQuote(createdQuoteRef.current);
+            onComplete(createdQuoteRef.current);
+          }
         }, 120);
       }
     }, 40);
@@ -107,7 +152,10 @@ export const RecordingScreen: React.FC<RecordingScreenProps> = ({ onComplete, on
         <button
           onClick={() => {
             sounds.playAiProcessing();
-            onComplete();
+            if (createdQuoteRef.current) {
+              storage.saveQuote(createdQuoteRef.current);
+              onComplete(createdQuoteRef.current);
+            }
           }}
           className="text-[11px] font-bold text-blue-600 hover:text-blue-700"
         >
@@ -161,17 +209,18 @@ export const RecordingScreen: React.FC<RecordingScreenProps> = ({ onComplete, on
                   <div className="flex items-center justify-between mb-1.5 pb-1 border-b border-slate-100">
                     <span className="text-[9.5px] font-bold uppercase tracking-wider text-blue-600 flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-ping" />
-                      Live Transcription
+                      Live Voice Dictation
                     </span>
                     <span className="text-[9.5px] text-slate-400 font-mono">0:02</span>
                   </div>
 
                   <p className="text-xs font-medium text-slate-800 leading-relaxed min-h-[55px]">
                     {displayedWords.map((word, i) => {
-                      const isClient = word.includes('John') || word.includes('Miller');
-                      const isLabor = word.includes('labor') || word.includes('120') || word.includes('hours');
-                      const isMaterials = word.includes('copper') || word.includes('piping') || word.includes('350');
-                      const isTax = word.includes('tax') || word.includes('10');
+                      const lower = word.toLowerCase();
+                      const isClient = lower.includes('john') || lower.includes('miller') || lower.includes('robert') || lower.includes('emily') || lower.includes('david');
+                      const isLabor = lower.includes('labor') || lower.includes('120') || lower.includes('125') || lower.includes('140') || lower.includes('hours');
+                      const isMaterials = lower.includes('copper') || lower.includes('piping') || lower.includes('subpanel') || lower.includes('capacitor') || lower.includes('heater') || lower.includes('350') || lower.includes('650') || lower.includes('180') || lower.includes('850');
+                      const isTax = lower.includes('tax') || lower.includes('10') || lower.includes('8');
 
                       let highlightClass = 'text-slate-800';
                       if (isClient) highlightClass = 'text-blue-700 font-bold bg-blue-50 px-1 rounded';
@@ -189,8 +238,8 @@ export const RecordingScreen: React.FC<RecordingScreenProps> = ({ onComplete, on
                   </p>
                 </div>
 
-                <div className="text-[10px] text-slate-400 italic pt-1">
-                  "Quote for John Miller, 4 hours labor at 120 an hour..."
+                <div className="text-[10px] text-slate-400 italic pt-1 truncate">
+                  "{transcriptToUse}"
                 </div>
               </div>
             </motion.div>
@@ -232,7 +281,7 @@ export const RecordingScreen: React.FC<RecordingScreenProps> = ({ onComplete, on
                 </div>
               </div>
 
-              {/* Extracted Entities Checklist - Compact & Fully Fitted */}
+              {/* Extracted Entities Checklist */}
               <div className="bg-white rounded-2xl p-3 border border-slate-200/90 shadow-xs space-y-1.5">
                 <p className="text-[9.5px] font-bold uppercase tracking-wider text-slate-400 mb-1">
                   Extracted Line Items
@@ -248,7 +297,7 @@ export const RecordingScreen: React.FC<RecordingScreenProps> = ({ onComplete, on
                   <div className="flex items-center gap-1.5 text-slate-800">
                     <User className="w-3.5 h-3.5 text-blue-600" />
                     <span className="font-bold">Client:</span>
-                    <span>John Miller</span>
+                    <span>{createdQuoteRef.current?.clientName || 'John Miller'}</span>
                   </div>
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                 </motion.div>
@@ -263,9 +312,11 @@ export const RecordingScreen: React.FC<RecordingScreenProps> = ({ onComplete, on
                   <div className="flex items-center gap-1.5 text-slate-800">
                     <Wrench className="w-3.5 h-3.5 text-emerald-600" />
                     <span className="font-bold">Labor:</span>
-                    <span>4 hrs @ $120/hr</span>
+                    <span>{createdQuoteRef.current?.items[0]?.description || '4 hrs @ $120/hr'}</span>
                   </div>
-                  <span className="font-bold text-slate-900 font-mono">$480.00</span>
+                  <span className="font-bold text-slate-900 font-mono">
+                    ${createdQuoteRef.current?.items[0]?.total.toFixed(2) || '480.00'}
+                  </span>
                 </motion.div>
 
                 {/* 3: Materials */}
@@ -278,9 +329,13 @@ export const RecordingScreen: React.FC<RecordingScreenProps> = ({ onComplete, on
                   <div className="flex items-center gap-1.5 text-slate-800">
                     <Package className="w-3.5 h-3.5 text-purple-600" />
                     <span className="font-bold">Materials:</span>
-                    <span className="truncate max-w-[120px]">Copper pipe & valves</span>
+                    <span className="truncate max-w-[120px]">
+                      {createdQuoteRef.current?.items[1]?.description || 'Copper pipe & valves'}
+                    </span>
                   </div>
-                  <span className="font-bold text-slate-900 font-mono">$350.00</span>
+                  <span className="font-bold text-slate-900 font-mono">
+                    ${createdQuoteRef.current?.items[1]?.total.toFixed(2) || '350.00'}
+                  </span>
                 </motion.div>
 
                 {/* 4: Tax */}
@@ -293,9 +348,11 @@ export const RecordingScreen: React.FC<RecordingScreenProps> = ({ onComplete, on
                   <div className="flex items-center gap-1.5 text-slate-800">
                     <Percent className="w-3.5 h-3.5 text-amber-600" />
                     <span className="font-bold">Tax:</span>
-                    <span>10% Sales Tax</span>
+                    <span>{((createdQuoteRef.current?.taxRate || 0.1) * 100).toFixed(0)}% Sales Tax</span>
                   </div>
-                  <span className="font-bold text-slate-900 font-mono">$83.00</span>
+                  <span className="font-bold text-slate-900 font-mono">
+                    ${createdQuoteRef.current?.taxAmount.toFixed(2) || '83.00'}
+                  </span>
                 </motion.div>
               </div>
             </motion.div>

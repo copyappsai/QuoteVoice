@@ -1,23 +1,7 @@
 import { jsPDF } from 'jspdf';
+import { Quote, ContractorProfile } from '../types';
 
-export interface QuoteData {
-  quoteNumber: string;
-  date: string;
-  contractorName: string;
-  contractorPhone: string;
-  clientName: string;
-  clientAddress: string;
-  items: {
-    description: string;
-    details: string;
-    amount: number;
-  }[];
-  taxRate: number;
-  taxAmount: number;
-  total: number;
-}
-
-export function generateQuotePDF(data: QuoteData) {
+export function generateQuotePDF(quote: Quote, profile: ContractorProfile) {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'pt',
@@ -29,125 +13,178 @@ export function generateQuotePDF(data: QuoteData) {
   const darkTextColor = [15, 23, 42]; // Slate 900
   const mutedTextColor = [100, 116, 139]; // Slate 500
   const lightBg = [248, 250, 252]; // Slate 50
+  const successColor = [16, 185, 129]; // Emerald 500
 
-  // Header background bar
+  // 1. Header background bar
   doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  doc.rect(0, 0, 595, 80, 'F');
+  doc.rect(0, 0, 595, 84, 'F');
 
-  // App / Brand Header
+  // Brand Name
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(22);
-  doc.text('QuoteVoice', 40, 48);
+  doc.text('QuoteVoice', 40, 44);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(11);
-  doc.text('Instant Trade Estimate', 40, 64);
+  doc.setFontSize(10.5);
+  doc.text('Official Contractor Estimate & Invoice', 40, 62);
 
-  // Quote info on right header
-  doc.text(`QUOTE #: ${data.quoteNumber}`, 555, 42, { align: 'right' });
-  doc.text(`DATE: ${data.date}`, 555, 58, { align: 'right' });
-
-  // Contractor info box
-  doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2]);
+  // Quote # & Date on top right
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
-  doc.text(data.contractorName, 40, 120);
-
+  doc.setFontSize(12);
+  doc.text(`QUOTE: ${quote.quoteNumber}`, 555, 42, { align: 'right' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
-  doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
-  doc.text('Licensed & Insured Trade Contractor', 40, 135);
-  doc.text(`Direct: ${data.contractorPhone}`, 40, 150);
+  doc.text(`Issue Date: ${quote.date}`, 555, 58, { align: 'right' });
+  doc.text(`Valid Until: ${quote.dueDate}`, 555, 72, { align: 'right' });
 
-  // Bill To Box
-  doc.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
-  doc.roundedRect(320, 105, 235, 60, 6, 6, 'F');
+  // 2. Contractor & Client Cards
+  let y = 115;
 
-  doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.text('ESTIMATE PREPARED FOR:', 335, 122);
-
+  // Left: Contractor Card
   doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2]);
+  doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
-  doc.text(data.clientName, 335, 140);
+  doc.text(profile.businessName, 40, y);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9.5);
   doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
-  doc.text(data.clientAddress, 335, 154);
+  doc.text(profile.tradeSpecialty, 40, y + 16);
+  doc.text(`License: ${profile.licenseNumber}`, 40, y + 30);
+  doc.text(`Phone: ${profile.phone}`, 40, y + 44);
+  doc.text(`Email: ${profile.email}`, 40, y + 58);
 
-  // Table header
-  let y = 195;
+  // Right: Prepared For Client Box
+  doc.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
+  doc.roundedRect(310, y - 10, 245, 82, 6, 6, 'F');
+  doc.setDrawColor(226, 232, 240);
+  doc.roundedRect(310, y - 10, 245, 82, 6, 6, 'S');
+
+  doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.text('ESTIMATE PREPARED FOR:', 325, y + 8);
+
+  doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2]);
+  doc.setFontSize(13);
+  doc.text(quote.clientName, 325, y + 26);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9.5);
+  doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
+  doc.text(quote.clientAddress || 'Client Site Address', 325, y + 42);
+  if (quote.clientPhone) {
+    doc.text(`Contact: ${quote.clientPhone}`, 325, y + 56);
+  }
+
+  // 3. Itemized Table Header
+  y = 220;
   doc.setFillColor(241, 245, 249);
   doc.rect(40, y, 515, 26, 'F');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
+  doc.setFontSize(9.5);
   doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2]);
-  doc.text('DESCRIPTION', 55, y + 17);
+  doc.text('DESCRIPTION OF WORK & MATERIALS', 55, y + 17);
+  doc.text('QTY', 380, y + 17, { align: 'center' });
+  doc.text('RATE', 450, y + 17, { align: 'right' });
   doc.text('AMOUNT', 540, y + 17, { align: 'right' });
 
   y += 38;
 
-  // Table rows
-  data.items.forEach((item) => {
+  // 4. Line Items
+  quote.items.forEach((item) => {
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
+    doc.setFontSize(10.5);
     doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2]);
     doc.text(item.description, 55, y);
 
-    doc.text(`$${item.amount.toFixed(2)}`, 540, y, { align: 'right' });
-
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
-    doc.text(item.details, 55, y + 14);
+    doc.setFontSize(9.5);
+    doc.text(String(item.quantity), 380, y, { align: 'center' });
+    doc.text(`$${item.unitPrice.toFixed(2)}`, 450, y, { align: 'right' });
+    doc.setFont('helvetica', 'bold');
+    doc.text(`$${item.total.toFixed(2)}`, 540, y, { align: 'right' });
+
+    if (item.details) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
+      doc.text(item.details, 55, y + 13);
+    }
 
     // separator line
     doc.setDrawColor(226, 232, 240);
-    doc.line(40, y + 26, 555, y + 26);
+    doc.line(40, y + 24, 555, y + 24);
 
-    y += 42;
+    y += 38;
   });
 
-  // Summary box
-  y += 10;
+  // 5. Financial Summary Box
+  y += 12;
   const summaryX = 350;
 
+  // Subtotal
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
+  doc.setFontSize(9.5);
   doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
-  doc.text(`Sales Tax (${(data.taxRate * 100).toFixed(0)}%):`, summaryX, y);
-  doc.text(`$${data.taxAmount.toFixed(2)}`, 540, y, { align: 'right' });
+  doc.text('Subtotal:', summaryX, y);
+  doc.text(`$${quote.subtotal.toFixed(2)}`, 540, y, { align: 'right' });
+
+  y += 20;
+
+  // Tax
+  doc.text(`Sales Tax (${(quote.taxRate * 100).toFixed(0)}%):`, summaryX, y);
+  doc.text(`$${quote.taxAmount.toFixed(2)}`, 540, y, { align: 'right' });
 
   y += 24;
 
-  // Total highlight box
+  // Grand Total Box
   doc.setFillColor(238, 242, 255);
-  doc.roundedRect(summaryX - 10, y - 14, 215, 36, 6, 6, 'F');
+  doc.roundedRect(summaryX - 10, y - 14, 215, 38, 6, 6, 'F');
+  doc.setDrawColor(199, 210, 254);
+  doc.roundedRect(summaryX - 10, y - 14, 215, 38, 6, 6, 'S');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
+  doc.setFontSize(13);
   doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
   doc.text('Total Estimate:', summaryX, y + 10);
-  doc.text(`$${data.total.toFixed(2)}`, 540, y + 10, { align: 'right' });
+  doc.text(`$${quote.total.toFixed(2)}`, 540, y + 10, { align: 'right' });
 
-  // Footer notes & terms
-  y = 740;
+  // 6. Terms, Notes & Signature
+  y = 660;
+
+  // Terms box
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
+  doc.setFontSize(9.5);
   doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2]);
-  doc.text('Terms & Payment:', 40, y);
+  doc.text('Payment Terms & Scope:', 40, y);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
+  doc.setFontSize(8.5);
   doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2]);
-  doc.text('• Estimate valid for 30 calendar days from issue date.', 40, y + 15);
-  doc.text('• Payment due upon completion of listed services.', 40, y + 28);
-  doc.text('• Generated automatically via QuoteVoice AI Voice-to-Quote System.', 40, y + 41);
+  doc.text(`• ${quote.paymentTerms || profile.defaultPaymentTerms}`, 40, y + 14);
+  doc.text('• Estimate valid for 30 calendar days from issue date.', 40, y + 26);
+  doc.text('• Unforeseen concealed structural/electrical defects billed at agreed hourly rate upon authorization.', 40, y + 38);
 
-  // Save the PDF
-  doc.save(`QuoteVoice_${data.clientName.replace(/\s+/g, '_')}_${data.quoteNumber}.pdf`);
+  // Client signature line
+  y += 75;
+  doc.setDrawColor(203, 213, 225);
+  doc.line(40, y, 240, y);
+  doc.line(355, y, 555, y);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.text('Authorized Client Acceptance Signature', 40, y + 12);
+  doc.text('Contractor Representative Signature', 355, y + 12);
+
+  // Bottom Footer
+  doc.setFontSize(8);
+  doc.setTextColor(148, 163, 184);
+  doc.text(`Generated by QuoteVoice AI • Quote #${quote.quoteNumber} • Page 1 of 1`, 297, 810, { align: 'center' });
+
+  // Download PDF
+  const filename = `QuoteVoice_${quote.clientName.replace(/\s+/g, '_')}_${quote.quoteNumber}.pdf`;
+  doc.save(filename);
 }
