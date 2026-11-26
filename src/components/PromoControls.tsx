@@ -12,7 +12,16 @@ import {
   Gamepad2,
   HeartPulse,
   Compass,
-  Wind
+  Wind,
+  Coffee,
+  Volume2 as VolumeIcon,
+  BookOpen,
+  Activity,
+  Shield,
+  Plane,
+  Box,
+  EyeOff,
+  Leaf
 } from 'lucide-react';
 import { PrototypeId, PROTOTYPE_CATALOG } from '../types/prototypes';
 
@@ -40,20 +49,37 @@ export const PromoControls: React.FC<PromoControlsProps> = ({
 }) => {
   const currentApp = PROTOTYPE_CATALOG.find((p) => p.id === activePrototype) || PROTOTYPE_CATALOG[0];
 
+  const getIcon = (id: PrototypeId) => {
+    switch (id) {
+      case 'vapestop': return Wind;
+      case 'presence': return Compass;
+      case 'auramatch': return Sparkles;
+      case 'caffeineclock': return Coffee;
+      case 'noisezero': return VolumeIcon;
+      case 'speedread': return BookOpen;
+      case 'carblens': return Activity;
+      case 'rentproof': return Shield;
+      case 'flightpulse': return Plane;
+      case 'memorypalace': return Box;
+      case 'ghostfilter': return EyeOff;
+      case 'plantwhisper': return Leaf;
+      case 'quotevoice': return Mic;
+      case 'sleeppulse': return Moon;
+      case 'pantrychef': return ChefHat;
+      case 'habitquest': return Gamepad2;
+      case 'petvitals': return HeartPulse;
+      default: return Zap;
+    }
+  };
+
   return (
-    <div className="w-full max-w-5xl mx-auto mb-4 px-3 space-y-2.5">
+    <div className="w-full max-w-5xl mx-auto mb-3 px-3 space-y-2">
       
-      {/* 1. App Prototype Switcher Bar */}
-      <div className="flex items-center justify-between gap-1.5 overflow-x-auto no-scrollbar bg-neutral-900/90 p-1.5 rounded-2xl border border-neutral-800 backdrop-blur-md shadow-xl">
+      {/* 1. Prototype Suite Scrollable Selector Bar */}
+      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar bg-neutral-900/90 p-1.5 rounded-2xl border border-neutral-800 backdrop-blur-md shadow-xl">
         {PROTOTYPE_CATALOG.map((proto) => {
           const isActive = proto.id === activePrototype;
-          let IconComp = Wind;
-          if (proto.id === 'presence') IconComp = Compass;
-          else if (proto.id === 'quotevoice') IconComp = Mic;
-          else if (proto.id === 'sleeppulse') IconComp = Moon;
-          else if (proto.id === 'pantrychef') IconComp = ChefHat;
-          else if (proto.id === 'habitquest') IconComp = Gamepad2;
-          else if (proto.id === 'petvitals') IconComp = HeartPulse;
+          const IconComp = getIcon(proto.id);
 
           return (
             <button
@@ -83,6 +109,9 @@ export const PromoControls: React.FC<PromoControlsProps> = ({
             <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider bg-neutral-800 px-2 py-0.5 rounded-full">
               {currentApp.category}
             </span>
+            <span className="text-[9px] font-semibold text-neutral-500 hidden md:inline-block">
+              • Style: {currentApp.designStyle}
+            </span>
           </div>
           <p className="text-[11px] text-neutral-400 hidden sm:block">
             {currentApp.description}
@@ -96,17 +125,17 @@ export const PromoControls: React.FC<PromoControlsProps> = ({
             disabled={isAutoPlaying}
             className={`relative overflow-hidden flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer ${
               isAutoPlaying
-                ? 'bg-cyan-600/80 text-white ring-2 ring-cyan-400'
-                : 'bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 text-neutral-950 font-black'
+                ? 'bg-blue-600/80 text-white ring-2 ring-blue-400'
+                : 'bg-white hover:bg-neutral-200 text-neutral-950 font-black'
             }`}
           >
             {isAutoPlaying && (
               <div 
-                className="absolute left-0 top-0 bottom-0 bg-white/25 transition-all"
+                className="absolute left-0 top-0 bottom-0 bg-black/20 transition-all"
                 style={{ width: `${autoPlayProgress}%` }}
               />
             )}
-            <Play className={`w-3.5 h-3.5 ${isAutoPlaying ? 'animate-pulse' : 'fill-neutral-950'}`} />
+            <Play className={`w-3.5 h-3.5 ${isAutoPlaying ? 'animate-pulse' : 'fill-black'}`} />
             <span className="relative z-10">
               {isAutoPlaying ? `Promo (${Math.round(autoPlayProgress)}%)` : 'Auto-Play (15s)'}
             </span>
