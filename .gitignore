@@ -24,3 +24,7 @@ temp_frames
 *.njsproj
 *.sln
 *.sw?
+
+ios/build
+*.xcodeproj/xcuserdata
+*.xcworkspace/xcuserdata
