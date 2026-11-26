@@ -36,7 +36,7 @@ class SoundEngine {
       osc.start();
       osc.stop(ctx.currentTime + 0.05);
     } catch {
-      // Ignore audio context errors
+      // Ignore
     }
   }
 
@@ -60,7 +60,7 @@ class SoundEngine {
       };
 
       playTone(440, 0, 0.08);
-      playTone(587.33, 0.09, 0.12); // High chime
+      playTone(587.33, 0.09, 0.12);
     } catch {
       // Ignore
     }
@@ -105,7 +105,7 @@ class SoundEngine {
     if (!ctx) return;
     try {
       const now = ctx.currentTime;
-      const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+      const notes = [523.25, 659.25, 783.99, 1046.50];
       notes.forEach((freq, i) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
@@ -123,6 +123,53 @@ class SoundEngine {
         osc.start(start);
         osc.stop(start + dur);
       });
+    } catch {
+      // Ignore
+    }
+  }
+
+  // RPG Level-up fanfare chord
+  playLevelUp() {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const notes = [440, 554.37, 659.25, 880, 1108.73];
+      notes.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const start = now + (i * 0.07);
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, start);
+        gain.gain.setValueAtTime(0.15, start);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.35);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(start);
+        osc.stop(start + 0.4);
+      });
+    } catch {
+      // Ignore
+    }
+  }
+
+  // Emergency / Alert beep
+  playAlert() {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(880, now);
+      osc.frequency.setValueAtTime(659.25, now + 0.1);
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.25);
     } catch {
       // Ignore
     }

@@ -7,10 +7,10 @@ import { QuoteReadyScreen } from './components/QuoteReadyScreen';
 import { ClientsScreen } from './components/ClientsScreen';
 import { SettingsModal } from './components/SettingsModal';
 import { PromoControls } from './components/PromoControls';
-import { SplitSnapApp } from './prototypes/SplitSnap/SplitSnapApp';
-import { FairMechanicApp } from './prototypes/FairMechanic/FairMechanicApp';
-import { SubZeroApp } from './prototypes/SubZero/SubZeroApp';
-import { ThriftLensApp } from './prototypes/ThriftLens/ThriftLensApp';
+import { SleepPulseApp } from './prototypes/SleepPulse/SleepPulseApp';
+import { PantryChefApp } from './prototypes/PantryChef/PantryChefApp';
+import { HabitQuestApp } from './prototypes/HabitQuest/HabitQuestApp';
+import { PetVitalsApp } from './prototypes/PetVitals/PetVitalsApp';
 import { PrototypeId, PROTOTYPE_CATALOG } from './types/prototypes';
 import { Quote } from './types';
 import { storage } from './services/storage';
@@ -105,18 +105,18 @@ export function App() {
 
       autoPlayTimers.current = [t1, t2, t3, t4];
     } else {
-      // Generic action flow for prototypes 2-5:
-      // T+1.2s: click primary floating action button inside phone
+      // Flow for prototypes 2-5:
+      // T+1.2s: click primary button inside phone
       const t1 = setTimeout(() => {
-        const actionBtn = document.querySelector('button[class*="rounded-full"][class*="shadow-lg"]') as HTMLButtonElement | null;
+        const actionBtn = document.querySelector('button[class*="rounded-xl"][class*="shadow-lg"]') as HTMLButtonElement | null;
         if (actionBtn) actionBtn.click();
       }, 1200);
 
-      // T+7.5s: click secondary CTA button
+      // T+7.0s: click secondary CTA button
       const t2 = setTimeout(() => {
-        const ctaBtn = document.querySelector('button[class*="shadow-md"][class*="py-2.5"]') as HTMLButtonElement | null;
+        const ctaBtn = document.querySelector('button[class*="rounded-xl"][class*="font-black"], button[class*="rounded-xl"][class*="shadow-md"]') as HTMLButtonElement | null;
         if (ctaBtn) ctaBtn.click();
-      }, 7500);
+      }, 7000);
 
       autoPlayTimers.current = [t1, t2];
     }
@@ -135,13 +135,13 @@ export function App() {
       } else if (e.key === '1') {
         handleSelectPrototype('quotevoice');
       } else if (e.key === '2') {
-        handleSelectPrototype('splitsnap');
+        handleSelectPrototype('sleeppulse');
       } else if (e.key === '3') {
-        handleSelectPrototype('fairmechanic');
+        handleSelectPrototype('pantrychef');
       } else if (e.key === '4') {
-        handleSelectPrototype('subzero');
+        handleSelectPrototype('habitquest');
       } else if (e.key === '5') {
-        handleSelectPrototype('thriftlens');
+        handleSelectPrototype('petvitals');
       }
     };
 
@@ -150,7 +150,7 @@ export function App() {
   }, [activePrototype, clearAutoPlay, handleReset]);
 
   return (
-    <div className="min-h-screen bg-[#0a0d14] text-slate-100 flex flex-col justify-between py-3 px-4 relative overflow-x-hidden selection:bg-blue-600 selection:text-white">
+    <div className="min-h-screen bg-[#080b12] text-slate-100 flex flex-col justify-between py-3 px-4 relative overflow-x-hidden selection:bg-blue-600 selection:text-white">
       
       {/* Background ambient lighting */}
       <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
@@ -185,7 +185,7 @@ export function App() {
         <IPhoneFrame activeScreen={activeScreen === 'clients' ? 'home' : activeScreen} isAutoPlaying={isAutoPlaying}>
           <AnimatePresence mode="wait">
             
-            {/* APP 1: QUOTEVOICE */}
+            {/* APP 1: QUOTEVOICE (Trades & Field Invoicing) */}
             {activePrototype === 'quotevoice' && (
               <React.Fragment key="app-quotevoice">
                 {activeScreen === 'home' && (
@@ -257,24 +257,24 @@ export function App() {
               </React.Fragment>
             )}
 
-            {/* APP 2: SPLITSNAP */}
-            {activePrototype === 'splitsnap' && (
-              <SplitSnapApp key="app-splitsnap" />
+            {/* APP 2: SLEEPPULSE (Biometrics & Sleep Track) */}
+            {activePrototype === 'sleeppulse' && (
+              <SleepPulseApp key="app-sleeppulse" />
             )}
 
-            {/* APP 3: FAIRMECHANIC */}
-            {activePrototype === 'fairmechanic' && (
-              <FairMechanicApp key="app-fairmechanic" />
+            {/* APP 3: PANTRYCHEF (Zero-Waste Smart Fridge AI) */}
+            {activePrototype === 'pantrychef' && (
+              <PantryChefApp key="app-pantrychef" />
             )}
 
-            {/* APP 4: SUBZERO */}
-            {activePrototype === 'subzero' && (
-              <SubZeroApp key="app-subzero" />
+            {/* APP 4: HABITQUEST (Gamified 8-Bit ADHD Focus RPG) */}
+            {activePrototype === 'habitquest' && (
+              <HabitQuestApp key="app-habitquest" />
             )}
 
-            {/* APP 5: THRIFTLENS */}
-            {activePrototype === 'thriftlens' && (
-              <ThriftLensApp key="app-thriftlens" />
+            {/* APP 5: PETVITALS (Emergency Toxicity & Vet Radar) */}
+            {activePrototype === 'petvitals' && (
+              <PetVitalsApp key="app-petvitals" />
             )}
 
           </AnimatePresence>
@@ -292,7 +292,7 @@ export function App() {
       {/* Bottom Subtitle / Recording Guide */}
       {!isCleanRecording && (
         <footer className="mt-3 text-center text-xs text-neutral-500 flex flex-wrap items-center justify-center gap-3">
-          <span>⚡ <strong>5 In-Demand iOS Prototypes</strong></span>
+          <span>⚡ <strong>5 Radically Different iOS App Niches</strong></span>
           <span className="text-neutral-700">•</span>
           <span>Keyboard: <kbd className="px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-300 font-mono text-[11px]">1-5</kbd> Switch App</span>
           <span className="text-neutral-700">•</span>

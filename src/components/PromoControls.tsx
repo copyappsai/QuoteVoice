@@ -6,10 +6,11 @@ import {
   VolumeX, 
   Sparkles,
   Zap,
-  Receipt,
-  Wrench,
-  Scissors,
-  Camera
+  Mic,
+  Moon,
+  ChefHat,
+  Gamepad2,
+  HeartPulse
 } from 'lucide-react';
 import { PrototypeId, PROTOTYPE_CATALOG } from '../types/prototypes';
 
@@ -40,21 +41,21 @@ export const PromoControls: React.FC<PromoControlsProps> = ({
   return (
     <div className="w-full max-w-5xl mx-auto mb-4 px-3 space-y-2.5">
       
-      {/* 1. App Prototype Suite Switcher Bar (5 Viral Apps) */}
+      {/* 1. App Prototype Suite Switcher Bar (5 Completely Different App Niches) */}
       <div className="flex items-center justify-between gap-1.5 overflow-x-auto no-scrollbar bg-neutral-900/90 p-1.5 rounded-2xl border border-neutral-800 backdrop-blur-md shadow-xl">
         {PROTOTYPE_CATALOG.map((proto) => {
           const isActive = proto.id === activePrototype;
-          let IconComp = Zap;
-          if (proto.id === 'splitsnap') IconComp = Receipt;
-          else if (proto.id === 'fairmechanic') IconComp = Wrench;
-          else if (proto.id === 'subzero') IconComp = Scissors;
-          else if (proto.id === 'thriftlens') IconComp = Camera;
+          let IconComp = Mic;
+          if (proto.id === 'sleeppulse') IconComp = Moon;
+          else if (proto.id === 'pantrychef') IconComp = ChefHat;
+          else if (proto.id === 'habitquest') IconComp = Gamepad2;
+          else if (proto.id === 'petvitals') IconComp = HeartPulse;
 
           return (
             <button
               key={proto.id}
               onClick={() => onSelectPrototype(proto.id)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 isActive
                   ? `bg-gradient-to-r ${proto.accentGradient} text-white shadow-md shadow-black/40`
                   : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60'
@@ -101,31 +102,30 @@ export const PromoControls: React.FC<PromoControlsProps> = ({
                 style={{ width: `${autoPlayProgress}%` }}
               />
             )}
-            <Play className={`w-3.5 h-3.5 fill-current ${isAutoPlaying ? 'animate-spin' : ''}`} />
+            <Play className={`w-3.5 h-3.5 ${isAutoPlaying ? 'animate-pulse' : 'fill-white'}`} />
             <span className="relative z-10">
-              {isAutoPlaying ? `Auto Playing Promo (${Math.round(autoPlayProgress)}%)` : '▶ Auto Play 15s Video Flow'}
+              {isAutoPlaying ? `Recording Promo (${Math.round(autoPlayProgress)}%)` : 'Auto-Play Promo (15s)'}
             </span>
           </button>
 
           <button
-            onClick={onReset}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-semibold border border-neutral-700/80 active:scale-95 transition-all cursor-pointer"
-            title="Reset Flow (R)"
+            onClick={onToggleSound}
+            className={`p-2 rounded-xl border text-xs transition-colors cursor-pointer ${
+              soundEnabled 
+                ? 'bg-neutral-800 border-neutral-700 text-neutral-200 hover:bg-neutral-700' 
+                : 'bg-neutral-900 border-neutral-800 text-neutral-500 hover:text-neutral-300'
+            }`}
+            title={soundEnabled ? 'Mute SFX' : 'Enable SFX'}
           >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Reset</span>
+            {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-400" /> : <VolumeX className="w-4 h-4" />}
           </button>
 
           <button
-            onClick={onToggleSound}
-            className={`p-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-              soundEnabled
-                ? 'bg-neutral-800 border-neutral-700 text-emerald-400'
-                : 'bg-neutral-900 border-neutral-800 text-neutral-500'
-            }`}
-            title={soundEnabled ? 'Sound Active' : 'Sound Muted'}
+            onClick={onReset}
+            className="p-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-neutral-200 text-xs transition-colors cursor-pointer"
+            title="Reset active screen"
           >
-            {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            <RotateCcw className="w-4 h-4" />
           </button>
         </div>
       </div>
