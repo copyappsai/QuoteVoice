@@ -7,13 +7,19 @@ import { QuoteReadyScreen } from './components/QuoteReadyScreen';
 import { ClientsScreen } from './components/ClientsScreen';
 import { SettingsModal } from './components/SettingsModal';
 import { PromoControls } from './components/PromoControls';
-import { Quote, ContractorProfile } from './types';
+import { SplitSnapApp } from './prototypes/SplitSnap/SplitSnapApp';
+import { FairMechanicApp } from './prototypes/FairMechanic/FairMechanicApp';
+import { SubZeroApp } from './prototypes/SubZero/SubZeroApp';
+import { ThriftLensApp } from './prototypes/ThriftLens/ThriftLensApp';
+import { PrototypeId, PROTOTYPE_CATALOG } from './types/prototypes';
+import { Quote } from './types';
 import { storage } from './services/storage';
 import { sounds } from './utils/audio';
 
 export type ScreenState = 'home' | 'recording' | 'processing' | 'ready' | 'clients';
 
 export function App() {
+  const [activePrototype, setActivePrototype] = useState<PrototypeId>('quotevoice');
   const [activeScreen, setActiveScreen] = useState<ScreenState>('home');
   const [activeQuote, setActiveQuote] = useState<Quote>(storage.getQuotes()[0]);
   const [showSettings, setShowSettings] = useState(false);
@@ -23,7 +29,7 @@ export function App() {
   const [autoPlayProgress, setAutoPlayProgress] = useState(0);
   const [soundEnabled, setSoundEnabled] = useState(true);
 
-  // Check if opened with ?clean=true (for video promo recordings)
+  // Check if opened with ?clean=true
   const isCleanRecording = typeof window !== 'undefined' && (
     window.location.search.includes('clean=true') || window.location.hash.includes('clean')
   );
@@ -31,7 +37,6 @@ export function App() {
   const autoPlayTimers = useRef<any[]>([]);
   const autoPlayInterval = useRef<any>(null);
 
-  // Clear auto play timers
   const clearAutoPlay = useCallback(() => {
     autoPlayTimers.current.forEach((t) => clearTimeout(t));
     autoPlayTimers.current = [];
@@ -53,17 +58,21 @@ export function App() {
     const next = !soundEnabled;
     setSoundEnabled(next);
     sounds.enabled = next;
-    if (next) {
-      sounds.playTap();
-    }
+    if (next) sounds.playTap();
   };
 
-  // Run the 15-second automated demo flow
+  const handleSelectPrototype = (id: PrototypeId) => {
+    clearAutoPlay();
+    sounds.playTap();
+    setActivePrototype(id);
+    setActiveScreen('home');
+  };
+
+  // Run 15-second promo demo flow for the active app
   const handleAutoPlay = () => {
     clearAutoPlay();
     setIsAutoPlaying(true);
     setAutoPlayProgress(0);
-    setActiveScreen('home');
 
     const totalDuration = 14500;
     const startTime = Date.now();
@@ -80,71 +89,65 @@ export function App() {
       }
     }, 50);
 
-    // Timeline actions
-    const t1 = setTimeout(() => {
-      sounds.playMicStart();
-      setActiveScreen('recording');
-    }, 1200);
+    if (activePrototype === 'quotevoice') {
+      setActiveScreen('home');
+      const t1 = setTimeout(() => {
+        sounds.playMicStart();
+        setActiveScreen('recording');
+      }, 1200);
 
-    const t2 = setTimeout(() => {
-      setActiveScreen('processing');
-    }, 3300);
+      const t2 = setTimeout(() => setActiveScreen('processing'), 3300);
+      const t3 = setTimeout(() => setActiveScreen('ready'), 4700);
+      const t4 = setTimeout(() => {
+        const sendBtn = document.querySelector('button[class*="bg-emerald-500"]') as HTMLButtonElement | null;
+        if (sendBtn) sendBtn.click();
+      }, 7500);
 
-    const t3 = setTimeout(() => {
-      setActiveScreen('ready');
-    }, 4700);
+      autoPlayTimers.current = [t1, t2, t3, t4];
+    } else {
+      // Generic action flow for prototypes 2-5:
+      // T+1.2s: click primary floating action button inside phone
+      const t1 = setTimeout(() => {
+        const actionBtn = document.querySelector('button[class*="rounded-full"][class*="shadow-lg"]') as HTMLButtonElement | null;
+        if (actionBtn) actionBtn.click();
+      }, 1200);
 
-    const t4 = setTimeout(() => {
-      const sendBtn = document.querySelector('button[class*="bg-emerald-500"]') as HTMLButtonElement | null;
-      if (sendBtn) {
-        sendBtn.click();
-      }
-    }, 7500);
+      // T+7.5s: click secondary CTA button
+      const t2 = setTimeout(() => {
+        const ctaBtn = document.querySelector('button[class*="shadow-md"][class*="py-2.5"]') as HTMLButtonElement | null;
+        if (ctaBtn) ctaBtn.click();
+      }, 7500);
 
-    autoPlayTimers.current = [t1, t2, t3, t4];
+      autoPlayTimers.current = [t1, t2];
+    }
   };
 
-  useEffect(() => {
-    if (isCleanRecording) {
-      const timer = setTimeout(() => {
-        handleAutoPlay();
-      }, 600);
-      return () => clearTimeout(timer);
-    }
-  }, [isCleanRecording]);
-
-  // Keyboard navigation shortcuts
+  // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
       if (e.code === 'Space') {
         e.preventDefault();
-        if (activeScreen === 'home') {
-          sounds.playMicStart();
-          setActiveScreen('recording');
-        } else if (activeScreen === 'ready') {
-          handleReset();
-        }
+        handleAutoPlay();
       } else if (e.key === 'r' || e.key === 'R') {
         handleReset();
       } else if (e.key === '1') {
-        clearAutoPlay();
-        setActiveScreen('home');
+        handleSelectPrototype('quotevoice');
       } else if (e.key === '2') {
-        clearAutoPlay();
-        setActiveScreen('recording');
+        handleSelectPrototype('splitsnap');
       } else if (e.key === '3') {
-        clearAutoPlay();
-        setActiveScreen('ready');
-      } else if (e.key === 'a' || e.key === 'A') {
-        handleAutoPlay();
+        handleSelectPrototype('fairmechanic');
+      } else if (e.key === '4') {
+        handleSelectPrototype('subzero');
+      } else if (e.key === '5') {
+        handleSelectPrototype('thriftlens');
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeScreen, clearAutoPlay, handleReset]);
+  }, [activePrototype, clearAutoPlay, handleReset]);
 
   return (
     <div className="min-h-screen bg-[#0a0d14] text-slate-100 flex flex-col justify-between py-3 px-4 relative overflow-x-hidden selection:bg-blue-600 selection:text-white">
@@ -162,15 +165,12 @@ export function App() {
         />
       </div>
 
-      {/* Top Floating Promo Controls */}
+      {/* Top Floating Promo Controls with 5-App Switcher */}
       {!isCleanRecording && (
         <PromoControls
-          currentScreen={activeScreen === 'clients' ? 'home' : activeScreen}
-          onSelectScreen={(s) => {
-            clearAutoPlay();
-            sounds.playTap();
-            setActiveScreen(s);
-          }}
+          activePrototype={activePrototype}
+          onSelectPrototype={handleSelectPrototype}
+          currentScreen={activeScreen}
           onAutoPlay={handleAutoPlay}
           isAutoPlaying={isAutoPlaying}
           autoPlayProgress={autoPlayProgress}
@@ -184,78 +184,99 @@ export function App() {
       <main className="flex-1 flex items-center justify-center my-auto">
         <IPhoneFrame activeScreen={activeScreen === 'clients' ? 'home' : activeScreen} isAutoPlaying={isAutoPlaying}>
           <AnimatePresence mode="wait">
-            {activeScreen === 'home' && (
-              <HomeScreen
-                key="home-screen"
-                onStartRecord={(customTranscript) => {
-                  clearAutoPlay();
-                  setVoiceTranscript(customTranscript);
-                  setActiveScreen('recording');
-                }}
-                onOpenQuote={(quote) => {
-                  setActiveQuote(quote);
-                  setActiveScreen('ready');
-                }}
-                onOpenClients={() => {
-                  setActiveScreen('clients');
-                }}
-                onOpenSettings={() => {
-                  setShowSettings(true);
-                }}
-              />
+            
+            {/* APP 1: QUOTEVOICE */}
+            {activePrototype === 'quotevoice' && (
+              <React.Fragment key="app-quotevoice">
+                {activeScreen === 'home' && (
+                  <HomeScreen
+                    key="home-screen"
+                    onStartRecord={(customTranscript) => {
+                      clearAutoPlay();
+                      setVoiceTranscript(customTranscript);
+                      setActiveScreen('recording');
+                    }}
+                    onOpenQuote={(quote) => {
+                      setActiveQuote(quote);
+                      setActiveScreen('ready');
+                    }}
+                    onOpenClients={() => setActiveScreen('clients')}
+                    onOpenSettings={() => setShowSettings(true)}
+                  />
+                )}
+
+                {(activeScreen === 'recording' || activeScreen === 'processing') && (
+                  <RecordingScreen
+                    key="recording-screen"
+                    initialTranscript={voiceTranscript}
+                    onComplete={(newQuote) => {
+                      setActiveQuote(newQuote);
+                      setActiveScreen('ready');
+                    }}
+                    onCancel={() => {
+                      clearAutoPlay();
+                      sounds.playTap();
+                      setActiveScreen('home');
+                    }}
+                  />
+                )}
+
+                {activeScreen === 'ready' && (
+                  <QuoteReadyScreen
+                    key="ready-screen"
+                    quote={activeQuote}
+                    onBack={() => {
+                      clearAutoPlay();
+                      sounds.playTap();
+                      setActiveScreen('home');
+                    }}
+                    onReset={() => {
+                      clearAutoPlay();
+                      sounds.playTap();
+                      setVoiceTranscript(undefined);
+                      setActiveScreen('recording');
+                    }}
+                    onQuoteUpdated={(updated) => setActiveQuote(updated)}
+                  />
+                )}
+
+                {activeScreen === 'clients' && (
+                  <ClientsScreen
+                    key="clients-screen"
+                    onBack={() => {
+                      sounds.playTap();
+                      setActiveScreen('home');
+                    }}
+                    onSelectClient={(clientName) => {
+                      sounds.playMicStart();
+                      setVoiceTranscript(`Quote for ${clientName}, 4 hours labor at 120 an hour, plus 250 for parts, add 10 percent tax.`);
+                      setActiveScreen('recording');
+                    }}
+                  />
+                )}
+              </React.Fragment>
             )}
 
-            {(activeScreen === 'recording' || activeScreen === 'processing') && (
-              <RecordingScreen
-                key="recording-screen"
-                initialTranscript={voiceTranscript}
-                onComplete={(newQuote) => {
-                  setActiveQuote(newQuote);
-                  setActiveScreen('ready');
-                }}
-                onCancel={() => {
-                  clearAutoPlay();
-                  sounds.playTap();
-                  setActiveScreen('home');
-                }}
-              />
+            {/* APP 2: SPLITSNAP */}
+            {activePrototype === 'splitsnap' && (
+              <SplitSnapApp key="app-splitsnap" />
             )}
 
-            {activeScreen === 'ready' && (
-              <QuoteReadyScreen
-                key="ready-screen"
-                quote={activeQuote}
-                onBack={() => {
-                  clearAutoPlay();
-                  sounds.playTap();
-                  setActiveScreen('home');
-                }}
-                onReset={() => {
-                  clearAutoPlay();
-                  sounds.playTap();
-                  setVoiceTranscript(undefined);
-                  setActiveScreen('recording');
-                }}
-                onQuoteUpdated={(updated) => {
-                  setActiveQuote(updated);
-                }}
-              />
+            {/* APP 3: FAIRMECHANIC */}
+            {activePrototype === 'fairmechanic' && (
+              <FairMechanicApp key="app-fairmechanic" />
             )}
 
-            {activeScreen === 'clients' && (
-              <ClientsScreen
-                key="clients-screen"
-                onBack={() => {
-                  sounds.playTap();
-                  setActiveScreen('home');
-                }}
-                onSelectClient={(clientName) => {
-                  sounds.playMicStart();
-                  setVoiceTranscript(`Quote for ${clientName}, 4 hours labor at 120 an hour, plus 250 for parts, add 10 percent tax.`);
-                  setActiveScreen('recording');
-                }}
-              />
+            {/* APP 4: SUBZERO */}
+            {activePrototype === 'subzero' && (
+              <SubZeroApp key="app-subzero" />
             )}
+
+            {/* APP 5: THRIFTLENS */}
+            {activePrototype === 'thriftlens' && (
+              <ThriftLensApp key="app-thriftlens" />
+            )}
+
           </AnimatePresence>
         </IPhoneFrame>
       </main>
@@ -264,22 +285,20 @@ export function App() {
       {showSettings && (
         <SettingsModal
           onClose={() => setShowSettings(false)}
-          onSaved={(newProfile) => {
-            // refresh
-          }}
+          onSaved={() => {}}
         />
       )}
 
       {/* Bottom Subtitle / Recording Guide */}
       {!isCleanRecording && (
-        <footer className="mt-4 text-center text-xs text-neutral-500 flex flex-wrap items-center justify-center gap-3">
-          <span>⚡ <strong>QuoteVoice</strong>: Voice-to-Quote iOS prototype</span>
+        <footer className="mt-3 text-center text-xs text-neutral-500 flex flex-wrap items-center justify-center gap-3">
+          <span>⚡ <strong>5 In-Demand iOS Prototypes</strong></span>
           <span className="text-neutral-700">•</span>
-          <span>Keyboard: <kbd className="px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-300 font-mono text-[11px]">Space</kbd> Start / Auto-flow</span>
+          <span>Keyboard: <kbd className="px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-300 font-mono text-[11px]">1-5</kbd> Switch App</span>
+          <span className="text-neutral-700">•</span>
+          <span><kbd className="px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-300 font-mono text-[11px]">Space</kbd> 15s Auto Play</span>
           <span className="text-neutral-700">•</span>
           <span><kbd className="px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-300 font-mono text-[11px]">R</kbd> Reset</span>
-          <span className="text-neutral-700">•</span>
-          <span><kbd className="px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-300 font-mono text-[11px]">A</kbd> 15s Auto Play</span>
         </footer>
       )}
 

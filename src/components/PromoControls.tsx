@@ -4,28 +4,30 @@ import {
   RotateCcw, 
   Volume2, 
   VolumeX, 
-  Video, 
   Sparkles,
-  Smartphone,
-  Eye,
-  Check
+  Zap,
+  Receipt,
+  Wrench,
+  Scissors,
+  Camera
 } from 'lucide-react';
-import { sounds } from '../utils/audio';
+import { PrototypeId, PROTOTYPE_CATALOG } from '../types/prototypes';
 
 interface PromoControlsProps {
-  currentScreen: 'home' | 'recording' | 'processing' | 'ready';
-  onSelectScreen: (screen: 'home' | 'recording' | 'processing' | 'ready') => void;
+  activePrototype: PrototypeId;
+  onSelectPrototype: (id: PrototypeId) => void;
+  currentScreen: string;
   onAutoPlay: () => void;
   isAutoPlaying: boolean;
-  autoPlayProgress: number; // 0 to 100
+  autoPlayProgress: number;
   soundEnabled: boolean;
   onToggleSound: () => void;
   onReset: () => void;
 }
 
 export const PromoControls: React.FC<PromoControlsProps> = ({
-  currentScreen,
-  onSelectScreen,
+  activePrototype,
+  onSelectPrototype,
   onAutoPlay,
   isAutoPlaying,
   autoPlayProgress,
@@ -33,38 +35,64 @@ export const PromoControls: React.FC<PromoControlsProps> = ({
   onToggleSound,
   onReset,
 }) => {
+  const currentApp = PROTOTYPE_CATALOG.find((p) => p.id === activePrototype) || PROTOTYPE_CATALOG[0];
+
   return (
-    <div className="w-full max-w-4xl mx-auto mb-6 px-4">
-      {/* Header Bar */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-3 bg-neutral-900/80 backdrop-blur-md border border-neutral-800 rounded-2xl p-3 sm:px-5 shadow-2xl">
-        
-        {/* Brand & Badge */}
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center font-bold text-white shadow-lg shadow-blue-600/30">
-            QV
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-extrabold text-sm tracking-tight text-white">QuoteVoice</span>
-              <span className="text-[10px] font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full">
-                Contractor Mobile Prototype
+    <div className="w-full max-w-5xl mx-auto mb-4 px-3 space-y-2.5">
+      
+      {/* 1. App Prototype Suite Switcher Bar (5 Viral Apps) */}
+      <div className="flex items-center justify-between gap-1.5 overflow-x-auto no-scrollbar bg-neutral-900/90 p-1.5 rounded-2xl border border-neutral-800 backdrop-blur-md shadow-xl">
+        {PROTOTYPE_CATALOG.map((proto) => {
+          const isActive = proto.id === activePrototype;
+          let IconComp = Zap;
+          if (proto.id === 'splitsnap') IconComp = Receipt;
+          else if (proto.id === 'fairmechanic') IconComp = Wrench;
+          else if (proto.id === 'subzero') IconComp = Scissors;
+          else if (proto.id === 'thriftlens') IconComp = Camera;
+
+          return (
+            <button
+              key={proto.id}
+              onClick={() => onSelectPrototype(proto.id)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                isActive
+                  ? `bg-gradient-to-r ${proto.accentGradient} text-white shadow-md shadow-black/40`
+                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60'
+              }`}
+            >
+              <IconComp className="w-3.5 h-3.5" />
+              <span>{proto.name}</span>
+              <span className={`text-[9px] px-1.5 py-0.2 rounded-md ${isActive ? 'bg-white/20 text-white' : 'bg-neutral-800 text-neutral-400'}`}>
+                {proto.badge}
               </span>
-            </div>
-            <p className="text-xs text-neutral-400 hidden sm:block">
-              iPhone 16 Pro • Centered for 15s Screen Recording
-            </p>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 2. Promo Video Controller & Toolbar */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 bg-neutral-900/80 backdrop-blur-md border border-neutral-800 rounded-2xl px-4 py-2.5 shadow-xl">
+        <div>
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-extrabold text-white tracking-tight">{currentApp.name}</h2>
+            <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider bg-neutral-800 px-2 py-0.5 rounded-full">
+              {currentApp.category}
+            </span>
           </div>
+          <p className="text-[11px] text-neutral-400 hidden sm:block">
+            {currentApp.description}
+          </p>
         </div>
 
-        {/* 15s Auto Play Button with Progress Bar */}
+        {/* Action Buttons */}
         <div className="flex items-center gap-2">
           <button
             onClick={onAutoPlay}
             disabled={isAutoPlaying}
-            className={`relative overflow-hidden group flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg cursor-pointer ${
+            className={`relative overflow-hidden flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer ${
               isAutoPlaying
-                ? 'bg-blue-600/80 text-white shadow-blue-600/25 ring-2 ring-blue-400'
-                : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-blue-600/40'
+                ? 'bg-blue-600/80 text-white ring-2 ring-blue-400'
+                : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white'
             }`}
           >
             {isAutoPlaying && (
@@ -75,14 +103,14 @@ export const PromoControls: React.FC<PromoControlsProps> = ({
             )}
             <Play className={`w-3.5 h-3.5 fill-current ${isAutoPlaying ? 'animate-spin' : ''}`} />
             <span className="relative z-10">
-              {isAutoPlaying ? `Auto Playing Promo (${Math.round(autoPlayProgress)}%)` : '▶ Auto Play 15s Demo Flow'}
+              {isAutoPlaying ? `Auto Playing Promo (${Math.round(autoPlayProgress)}%)` : '▶ Auto Play 15s Video Flow'}
             </span>
           </button>
 
           <button
             onClick={onReset}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-semibold border border-neutral-700/80 active:scale-95 transition-all cursor-pointer"
-            title="Reset to Home (R)"
+            title="Reset Flow (R)"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Reset</span>
@@ -95,47 +123,13 @@ export const PromoControls: React.FC<PromoControlsProps> = ({
                 ? 'bg-neutral-800 border-neutral-700 text-emerald-400'
                 : 'bg-neutral-900 border-neutral-800 text-neutral-500'
             }`}
-            title={soundEnabled ? 'Sound Effects Active' : 'Sound Muted'}
+            title={soundEnabled ? 'Sound Active' : 'Sound Muted'}
           >
             {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
           </button>
         </div>
-
-        {/* Interactive Screen Jump Tabs */}
-        <div className="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-neutral-800">
-          <button
-            onClick={() => onSelectScreen('home')}
-            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-              currentScreen === 'home'
-                ? 'bg-neutral-800 text-white shadow-sm'
-                : 'text-neutral-400 hover:text-neutral-200'
-            }`}
-          >
-            1. Home
-          </button>
-          <button
-            onClick={() => onSelectScreen('recording')}
-            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-              currentScreen === 'recording' || currentScreen === 'processing'
-                ? 'bg-neutral-800 text-white shadow-sm'
-                : 'text-neutral-400 hover:text-neutral-200'
-            }`}
-          >
-            2. Voice & AI
-          </button>
-          <button
-            onClick={() => onSelectScreen('ready')}
-            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-              currentScreen === 'ready'
-                ? 'bg-neutral-800 text-white shadow-sm'
-                : 'text-neutral-400 hover:text-neutral-200'
-            }`}
-          >
-            3. Quote Ready
-          </button>
-        </div>
-
       </div>
+
     </div>
   );
 };
