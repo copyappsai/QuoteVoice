@@ -1,4 +1,4 @@
-export type PrototypeId = 'quotevoice' | 'sleeppulse' | 'pantrychef' | 'habitquest' | 'petvitals';
+export type PrototypeId = 'vapestop' | 'presence' | 'quotevoice' | 'sleeppulse' | 'pantrychef' | 'habitquest' | 'petvitals';
 
 export interface PrototypeAppInfo {
   id: PrototypeId;
@@ -12,6 +12,26 @@ export interface PrototypeAppInfo {
 }
 
 export const PROTOTYPE_CATALOG: PrototypeAppInfo[] = [
+  {
+    id: 'vapestop',
+    name: 'VapeStop',
+    badge: 'Nicotine Freedom',
+    category: 'Addiction & Lung Health',
+    description: 'Craving SOS 4-7-8 breathing, puffs avoided tracker & lung cilia regeneration radar',
+    accentGradient: 'from-cyan-500 via-teal-500 to-emerald-600',
+    textColor: 'text-cyan-400',
+    iconName: 'wind',
+  },
+  {
+    id: 'presence',
+    name: 'Stillness',
+    badge: 'Digital Detox',
+    category: 'Apple Design Award • Wellbeing',
+    description: 'Tracks untouched phone time, face-down flip mode & celebrates real-world life reclaimed',
+    accentGradient: 'from-neutral-700 via-neutral-600 to-neutral-500',
+    textColor: 'text-neutral-200',
+    iconName: 'compass',
+  },
   {
     id: 'quotevoice',
     name: 'QuoteVoice',
@@ -40,7 +60,7 @@ export const PROTOTYPE_CATALOG: PrototypeAppInfo[] = [
     description: 'Snap fridge shelf -> 15-min gourmet recipes using only what expires in 48h',
     accentGradient: 'from-emerald-500 to-teal-600',
     textColor: 'text-emerald-400',
-    iconName: 'utensils',
+    iconName: 'chef-hat',
   },
   {
     id: 'habitquest',

@@ -10,7 +10,9 @@ import {
   Moon,
   ChefHat,
   Gamepad2,
-  HeartPulse
+  HeartPulse,
+  Compass,
+  Wind
 } from 'lucide-react';
 import { PrototypeId, PROTOTYPE_CATALOG } from '../types/prototypes';
 
@@ -41,12 +43,14 @@ export const PromoControls: React.FC<PromoControlsProps> = ({
   return (
     <div className="w-full max-w-5xl mx-auto mb-4 px-3 space-y-2.5">
       
-      {/* 1. App Prototype Suite Switcher Bar (5 Completely Different App Niches) */}
+      {/* 1. App Prototype Switcher Bar */}
       <div className="flex items-center justify-between gap-1.5 overflow-x-auto no-scrollbar bg-neutral-900/90 p-1.5 rounded-2xl border border-neutral-800 backdrop-blur-md shadow-xl">
         {PROTOTYPE_CATALOG.map((proto) => {
           const isActive = proto.id === activePrototype;
-          let IconComp = Mic;
-          if (proto.id === 'sleeppulse') IconComp = Moon;
+          let IconComp = Wind;
+          if (proto.id === 'presence') IconComp = Compass;
+          else if (proto.id === 'quotevoice') IconComp = Mic;
+          else if (proto.id === 'sleeppulse') IconComp = Moon;
           else if (proto.id === 'pantrychef') IconComp = ChefHat;
           else if (proto.id === 'habitquest') IconComp = Gamepad2;
           else if (proto.id === 'petvitals') IconComp = HeartPulse;
@@ -55,7 +59,7 @@ export const PromoControls: React.FC<PromoControlsProps> = ({
             <button
               key={proto.id}
               onClick={() => onSelectPrototype(proto.id)}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 isActive
                   ? `bg-gradient-to-r ${proto.accentGradient} text-white shadow-md shadow-black/40`
                   : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60'
@@ -92,8 +96,8 @@ export const PromoControls: React.FC<PromoControlsProps> = ({
             disabled={isAutoPlaying}
             className={`relative overflow-hidden flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer ${
               isAutoPlaying
-                ? 'bg-blue-600/80 text-white ring-2 ring-blue-400'
-                : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white'
+                ? 'bg-cyan-600/80 text-white ring-2 ring-cyan-400'
+                : 'bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 text-neutral-950 font-black'
             }`}
           >
             {isAutoPlaying && (
@@ -102,9 +106,9 @@ export const PromoControls: React.FC<PromoControlsProps> = ({
                 style={{ width: `${autoPlayProgress}%` }}
               />
             )}
-            <Play className={`w-3.5 h-3.5 ${isAutoPlaying ? 'animate-pulse' : 'fill-white'}`} />
+            <Play className={`w-3.5 h-3.5 ${isAutoPlaying ? 'animate-pulse' : 'fill-neutral-950'}`} />
             <span className="relative z-10">
-              {isAutoPlaying ? `Recording Promo (${Math.round(autoPlayProgress)}%)` : 'Auto-Play Promo (15s)'}
+              {isAutoPlaying ? `Promo (${Math.round(autoPlayProgress)}%)` : 'Auto-Play (15s)'}
             </span>
           </button>
 
